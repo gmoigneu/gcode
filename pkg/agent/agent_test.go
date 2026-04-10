@@ -52,6 +52,19 @@ func TestAgentStateSnapshot(t *testing.T) {
 }
 
 func TestAgentSubscribeAndUnsubscribe(t *testing.T) {
+	// Stub the loop so tests don't depend on ai.StreamSimple.
+	prev := runLoopFn
+	t.Cleanup(func() { runLoopFn = prev })
+	runLoopFn = func(ctx context.Context, agent *Agent, initial []AgentMessage) error {
+		agent.emit(AgentEvent{Type: AgentEventStart}, ctx)
+		for _, m := range initial {
+			agent.emit(AgentEvent{Type: MessageStart, Message: m}, ctx)
+			agent.emit(AgentEvent{Type: MessageEnd, Message: m}, ctx)
+		}
+		agent.emit(AgentEvent{Type: AgentEventEnd}, ctx)
+		return nil
+	}
+
 	a := New(AgentConfig{})
 
 	var mu sync.Mutex
