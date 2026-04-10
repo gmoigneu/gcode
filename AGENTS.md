@@ -25,7 +25,7 @@ git checkout -b feat/<issue-number>-<short-description>
 
 ### 3. Implement
 
-- Use model `gateway-opus-46` for all implementation work
+- Use model `gateway/claude-opus-4-6` for all implementation work
 - Read the linked spec section before writing any code
 - Write tests first (TDD): failing test, then minimal code to pass
 - Run tests after every change: `go test ./pkg/<package>/...`
@@ -58,7 +58,7 @@ gh pr create --draft \
 
 ### 6. Code review
 
-Dispatch a code review subagent using model `gateway-gpt-54`. The reviewer checks:
+Dispatch a code review subagent using model `github-copilot/gpt-5.4`. The reviewer checks:
 
 - Correctness against the spec
 - Test coverage
@@ -75,7 +75,7 @@ The reviewer posts findings as a PR comment.
 
 ### 7. Address review feedback
 
-Back on `gateway-opus-46`: read the review comment, fix issues, commit with:
+Back on `gateway/claude-opus-4-6`: read the review comment, fix issues, commit with:
 
 ```bash
 git add -A
@@ -85,7 +85,7 @@ git push
 
 ### 8. Final check and merge
 
-On `gateway-opus-46`: run the full test suite one more time.
+On `gateway/claude-opus-4-6`: run the full test suite one more time.
 
 ```bash
 go test ./...
@@ -110,7 +110,7 @@ git pull
 
 ```
 issue → branch → implement (gateway-opus-46) → commit → draft PR
-  → review (gateway-gpt-54) → fix feedback → final check (gateway-opus-46)
+  → review (github-copilot/gpt-5.4) → fix feedback → final check (gateway/claude-opus-4-6)
   → merge → checkout main → pull
 ```
 
@@ -118,8 +118,8 @@ issue → branch → implement (gateway-opus-46) → commit → draft PR
 
 | Task | Model |
 |---|---|
-| Implementation | `gateway-opus-46` |
-| Code review | `gateway-gpt-54` |
+| Implementation | `gateway/claude-opus-4-6` |
+| Code review | `github-copilot/gpt-5.4` |
 
 ## Project structure
 
