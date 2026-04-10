@@ -71,7 +71,7 @@ Use the code-review-checklist skill.
 Review the diff for PR #N against specs/go-agent-phase<X>.md.
 ```
 
-The reviewer posts findings as a PR comment.
+The reviewer posts findings as a PR comment via `gh pr comment`.
 
 ### 7. Address review feedback
 
@@ -81,6 +81,12 @@ Back on `gateway/claude-opus-4-6`: read the review comment, fix issues, commit w
 git add -A
 git commit -m "fix(scope): address review feedback, refs #N"
 git push
+```
+
+If the review resulted in code changes, add a comment on the PR summarizing what was fixed:
+
+```bash
+gh pr comment <PR-number> --body "Fixed: <summary of changes from review>"
 ```
 
 ### 8. Final check and merge
@@ -99,7 +105,19 @@ gh pr ready
 gh pr merge --squash --delete-branch
 ```
 
-### 9. Clean up
+### 9. Update the issue and clean up
+
+After merge, update the original issue with a summary of what was done:
+
+```bash
+gh issue comment <issue-number> --body "## Done
+
+<summary of what was implemented, key files changed, any deviations from the spec>
+
+Merged in PR #<pr-number>."
+```
+
+Then clean up:
 
 ```bash
 git checkout main
@@ -109,9 +127,9 @@ git pull
 ### Summary of the flow
 
 ```
-issue → branch → implement (gateway-opus-46) → commit → draft PR
-  → review (github-copilot/gpt-5.4) → fix feedback → final check (gateway/claude-opus-4-6)
-  → merge → checkout main → pull
+issue → branch → implement (gateway/claude-opus-4-6) → commit → draft PR
+  → review (github-copilot/gpt-5.4) → fix feedback (comment on PR) → final check (gateway/claude-opus-4-6)
+  → merge → update issue with summary → checkout main → pull
 ```
 
 ## Models
