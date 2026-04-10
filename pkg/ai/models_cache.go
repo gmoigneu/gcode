@@ -42,14 +42,17 @@ var ModelsDevURL = defaultModelsDevURL
 // fresh and fetching from models.dev otherwise. On fetch failure it falls
 // back to a stale cache, then to a hardcoded minimal default set.
 func LoadOrFetchModels() (*ModelCache, error) {
-	cache, _, err := loadOrFetchModels(ModelsDevURL, defaultCachePath(), http.DefaultClient, time.Now)
+	cache, _, err := loadOrFetchModels(ModelsDevURL, resolveCachePath(), http.DefaultClient, time.Now)
 	return cache, err
 }
 
-// defaultCachePath returns ~/.gcode/cache/models.json. If the home directory
-// cannot be determined, the returned path is "" and the caller will skip the
-// on-disk cache entirely.
-func defaultCachePath() string {
+// resolveCachePath returns ModelCachePath when set, otherwise
+// ~/.gcode/cache/models.json. If neither can be resolved, returns "" and
+// callers will skip the on-disk cache entirely.
+func resolveCachePath() string {
+	if ModelCachePath != "" {
+		return ModelCachePath
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
