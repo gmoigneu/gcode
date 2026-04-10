@@ -58,7 +58,10 @@ gh pr create --draft \
 "
 ```
 
+<!--
 ### 6. Code review
+
+**DISABLED for now — skip the review step and go straight to the final check.**
 
 Dispatch a code review subagent with pi (~/.bun/bin/pi) using model `github-copilot/gpt-5.4`. The reviewer checks:
 
@@ -90,6 +93,8 @@ If the review resulted in code changes, add a comment on the PR summarizing what
 ```bash
 gh pr comment <PR-number> --body "Fixed: <summary of changes from review>"
 ```
+-->
+
 
 ### 8. Final check and merge
 
@@ -129,10 +134,11 @@ git pull
 ### Summary of the flow
 
 ```
-issue → branch → implement (gateway/claude-opus-4-6) → commit → draft PR
-  → review (github-copilot/gpt-5.4) → fix feedback (comment on PR) → final check (gateway/claude-opus-4-6)
-  → merge → update issue with summary → checkout main → pull
+issue → branch → implement (claude-opus-4-6) → commit → draft PR
+  → final check → merge → update issue with summary → checkout main → pull
 ```
+
+(Code review step is temporarily disabled — see commented section 6/7 above.)
 
 ## Models
 

@@ -176,7 +176,7 @@ type UserMessage struct {
 	Timestamp int64     `json:"timestamp"`
 }
 
-func (*UserMessage) MessageRole() string      { return "user" }
+func (*UserMessage) MessageRole() string       { return "user" }
 func (m *UserMessage) MessageTimestamp() int64 { return m.Timestamp }
 
 func (m *UserMessage) MarshalJSON() ([]byte, error) {
@@ -222,7 +222,7 @@ type AssistantMessage struct {
 	Timestamp    int64      `json:"timestamp"`
 }
 
-func (*AssistantMessage) MessageRole() string      { return "assistant" }
+func (*AssistantMessage) MessageRole() string       { return "assistant" }
 func (m *AssistantMessage) MessageTimestamp() int64 { return m.Timestamp }
 
 func (m *AssistantMessage) MarshalJSON() ([]byte, error) {
@@ -293,7 +293,7 @@ type ToolResultMessage struct {
 	Timestamp  int64     `json:"timestamp"`
 }
 
-func (*ToolResultMessage) MessageRole() string      { return "toolResult" }
+func (*ToolResultMessage) MessageRole() string       { return "toolResult" }
 func (m *ToolResultMessage) MessageTimestamp() int64 { return m.Timestamp }
 
 func (m *ToolResultMessage) MarshalJSON() ([]byte, error) {
