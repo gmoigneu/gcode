@@ -246,6 +246,9 @@ func (a *Agent) processEvent(event AgentEvent) {
 		a.state.StreamingMessage = event.Message
 	case MessageEnd:
 		a.state.StreamingMessage = nil
+		if event.Message != nil {
+			a.state.Messages = append(a.state.Messages, event.Message)
+		}
 	case ToolExecutionStart:
 		a.state.PendingToolCalls[event.ToolCallID] = true
 	case ToolExecutionEnd:
@@ -308,14 +311,6 @@ func buildUserMessages(input string, images []ai.ImageContent) []AgentMessage {
 		Content:   content,
 		Timestamp: time.Now().UnixMilli(),
 	}}
-}
-
-// appendStateMessage is a convenience for the loop to append a message to
-// state under the stateMu lock.
-func (a *Agent) appendStateMessage(msg AgentMessage) {
-	a.stateMu.Lock()
-	defer a.stateMu.Unlock()
-	a.state.Messages = append(a.state.Messages, msg)
 }
 
 // stateSnapshot returns an unlocked snapshot pointer. Only callers that
