@@ -25,7 +25,7 @@ git checkout -b feat/<issue-number>-<short-description>
 
 ### 3. Implement
 
-- Use model `gateway/claude-opus-4-6` for all implementation work
+- Use model `claude-opus-4-6` for all implementation work
 - Read the linked spec section before writing any code
 - Write tests first (TDD): failing test, then minimal code to pass
 - Run tests after every change: `go test ./pkg/<package>/...`
@@ -35,9 +35,11 @@ git checkout -b feat/<issue-number>-<short-description>
 
 Use conventional commits. Reference the issue number.
 
+All commits must be authored as `G/ <g@moigneu.com>`. Do **not** add a `Co-Authored-By: Claude` trailer or any other co-author trailer.
+
 ```bash
 git add -A
-git commit -m "feat(scope): description, closes #N"
+git -c user.name='G/' -c user.email='g@moigneu.com' commit -m "feat(scope): description, closes #N"
 git push -u origin feat/<issue-number>-<short-description>
 ```
 
@@ -58,7 +60,7 @@ gh pr create --draft \
 
 ### 6. Code review
 
-Dispatch a code review subagent using model `github-copilot/gpt-5.4`. The reviewer checks:
+Dispatch a code review subagent with pi (~/.bun/bin/pi) using model `github-copilot/gpt-5.4`. The reviewer checks:
 
 - Correctness against the spec
 - Test coverage
@@ -75,7 +77,7 @@ The reviewer posts findings as a PR comment via `gh pr comment`.
 
 ### 7. Address review feedback
 
-Back on `gateway/claude-opus-4-6`: read the review comment, fix issues, commit with:
+Read the review comment, fix issues, commit with:
 
 ```bash
 git add -A
