@@ -51,6 +51,7 @@ type Agent struct {
 	runMu        sync.Mutex
 	activeCancel context.CancelFunc
 	activeDone   chan struct{}
+	liveness     *livenessTracker
 }
 
 type listenerEntry struct {
@@ -154,6 +155,8 @@ func (a *Agent) RunMessages(messages []AgentMessage) error {
 	a.state.StreamingMessage = nil
 	a.state.ErrorMessage = ""
 	a.stateMu.Unlock()
+
+	a.liveness = newLivenessTracker(a)
 
 	err := runLoopFn(ctx, a, messages)
 
