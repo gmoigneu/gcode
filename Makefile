@@ -1,4 +1,4 @@
-.PHONY: build test lint fmt vet clean
+.PHONY: build test test-integration lint vet fmt fmt-check clean all
 
 BINARY := gcode
 BUILD_DIR := bin
