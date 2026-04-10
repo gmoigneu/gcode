@@ -25,7 +25,7 @@ git checkout -b feat/<issue-number>-<short-description>
 
 ### 3. Implement
 
-- Use model `gateway/claude-opus-4-6` for all implementation work
+- Use model `claude-opus-4-6` for all implementation work
 - Read the linked spec section before writing any code
 - Write tests first (TDD): failing test, then minimal code to pass
 - Run tests after every change: `go test ./pkg/<package>/...`
@@ -35,9 +35,11 @@ git checkout -b feat/<issue-number>-<short-description>
 
 Use conventional commits. Reference the issue number.
 
+All commits must be authored as `G/ <g@moigneu.com>`. Do **not** add a `Co-Authored-By: Claude` trailer or any other co-author trailer.
+
 ```bash
 git add -A
-git commit -m "feat(scope): description, closes #N"
+git -c user.name='G/' -c user.email='g@moigneu.com' commit -m "feat(scope): description, closes #N"
 git push -u origin feat/<issue-number>-<short-description>
 ```
 
@@ -56,9 +58,12 @@ gh pr create --draft \
 "
 ```
 
+<!--
 ### 6. Code review
 
-Dispatch a code review subagent using model `github-copilot/gpt-5.4`. The reviewer checks:
+**DISABLED for now — skip the review step and go straight to the final check.**
+
+Dispatch a code review subagent with pi (~/.bun/bin/pi) using model `github-copilot/gpt-5.4`. The reviewer checks:
 
 - Correctness against the spec
 - Test coverage
@@ -75,7 +80,7 @@ The reviewer posts findings as a PR comment via `gh pr comment`.
 
 ### 7. Address review feedback
 
-Back on `gateway/claude-opus-4-6`: read the review comment, fix issues, commit with:
+Read the review comment, fix issues, commit with:
 
 ```bash
 git add -A
@@ -88,6 +93,8 @@ If the review resulted in code changes, add a comment on the PR summarizing what
 ```bash
 gh pr comment <PR-number> --body "Fixed: <summary of changes from review>"
 ```
+-->
+
 
 ### 8. Final check and merge
 
@@ -127,10 +134,11 @@ git pull
 ### Summary of the flow
 
 ```
-issue → branch → implement (gateway/claude-opus-4-6) → commit → draft PR
-  → review (github-copilot/gpt-5.4) → fix feedback (comment on PR) → final check (gateway/claude-opus-4-6)
-  → merge → update issue with summary → checkout main → pull
+issue → branch → implement (claude-opus-4-6) → commit → draft PR
+  → final check → merge → update issue with summary → checkout main → pull
 ```
+
+(Code review step is temporarily disabled — see commented section 6/7 above.)
 
 ## Models
 
