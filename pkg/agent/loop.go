@@ -37,6 +37,9 @@ func runLoop(ctx context.Context, agent *Agent, initialMessages []AgentMessage) 
 	for {
 		for {
 			if err := ctx.Err(); err != nil {
+				if agent.liveness != nil {
+					agent.liveness.Stop(ctx)
+				}
 				agent.emit(AgentEvent{Type: AgentEventEnd, NewMessages: newMessages}, ctx)
 				return err
 			}
@@ -59,6 +62,9 @@ func runLoop(ctx context.Context, agent *Agent, initialMessages []AgentMessage) 
 			assistantMsg, streamErr := streamAssistantResponse(ctx, agent)
 			if streamErr != nil {
 				agent.emit(AgentEvent{Type: TurnEnd, TurnMessage: assistantMsg}, ctx)
+				if agent.liveness != nil {
+					agent.liveness.Stop(ctx)
+				}
 				agent.emit(AgentEvent{Type: AgentEventEnd, NewMessages: newMessages}, ctx)
 				return streamErr
 			}
@@ -66,6 +72,9 @@ func runLoop(ctx context.Context, agent *Agent, initialMessages []AgentMessage) 
 				assistantMsg.StopReason == ai.StopReasonAborted) {
 				newMessages = append(newMessages, assistantMsg)
 				agent.emit(AgentEvent{Type: TurnEnd, TurnMessage: assistantMsg}, ctx)
+				if agent.liveness != nil {
+					agent.liveness.Stop(ctx)
+				}
 				agent.emit(AgentEvent{Type: AgentEventEnd, NewMessages: newMessages}, ctx)
 				if assistantMsg.StopReason == ai.StopReasonAborted {
 					return context.Canceled
@@ -112,6 +121,9 @@ func runLoop(ctx context.Context, agent *Agent, initialMessages []AgentMessage) 
 		pending = followUps
 	}
 
+	if agent.liveness != nil {
+		agent.liveness.Stop(ctx)
+	}
 	agent.emit(AgentEvent{Type: AgentEventEnd, NewMessages: newMessages}, ctx)
 	return nil
 }
@@ -120,6 +132,9 @@ func runLoop(ctx context.Context, agent *Agent, initialMessages []AgentMessage) 
 // It returns the final assistant message (or a synthetic error message) and
 // any error from the transform context hook.
 func streamAssistantResponse(ctx context.Context, agent *Agent) (*ai.AssistantMessage, error) {
+	if agent.liveness != nil {
+		agent.liveness.SetStatus(ctx, StatusThinking, "")
+	}
 	snapshot := agent.stateSnapshot()
 
 	messages := append([]AgentMessage(nil), snapshot.Messages...)
@@ -233,8 +248,13 @@ func defaultConvertToLLM(messages []AgentMessage) []ai.Message {
 }
 
 // executeToolCalls dispatches a slice of tool calls, honouring the agent's
-// configured execution mode.
+// configured execution mode. Liveness transitions to StatusExecuting before
+// dispatch; the next streamAssistantResponse call (or Stop) will flip it
+// back to Thinking/Idle.
 func executeToolCalls(ctx context.Context, agent *Agent, assistantMsg *ai.AssistantMessage, toolCalls []ai.ToolCall) []ai.ToolResultMessage {
+	if agent.liveness != nil && len(toolCalls) > 0 {
+		agent.liveness.SetStatus(ctx, StatusExecuting, toolCalls[0].Name)
+	}
 	switch agent.config.ToolExecution {
 	case ToolExecSequential:
 		return executeToolCallsSequential(ctx, agent, assistantMsg, toolCalls)
