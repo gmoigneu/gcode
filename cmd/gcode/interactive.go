@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -11,6 +13,8 @@ import (
 	"github.com/gmoigneu/gcode/internal/prompt"
 	"github.com/gmoigneu/gcode/pkg/agent"
 	"github.com/gmoigneu/gcode/pkg/ai"
+	"github.com/gmoigneu/gcode/pkg/compaction"
+	"github.com/gmoigneu/gcode/pkg/store"
 	"github.com/gmoigneu/gcode/pkg/tools"
 	"github.com/gmoigneu/gcode/pkg/tui"
 	"github.com/gmoigneu/gcode/pkg/tui/components"
@@ -66,6 +70,12 @@ type interactiveApp struct {
 	done    chan struct{}
 	closeMu sync.Mutex
 	closed  bool
+
+	// Session persistence state.
+	db        *store.DB
+	sessionID string
+	leafMu    sync.Mutex
+	leafID    string
 }
 
 // AskUser implements tools.QuestionHandler.
@@ -137,8 +147,11 @@ func (a *interactiveApp) start() error {
 		})
 	}
 
+	a.initSession()
+
 	a.agent = agent.New(agent.AgentConfig{
-		GetAPIKey: func(_ ai.Provider) string { return a.apiKey },
+		GetAPIKey:        func(_ ai.Provider) string { return a.apiKey },
+		TransformContext: a.transformContext,
 	})
 	a.agent.SetSystemPrompt(systemPrompt)
 	a.agent.SetTools(toolset)
@@ -194,6 +207,7 @@ func (a *interactiveApp) handleAgentEvent(e agent.AgentEvent, _ context.Context)
 			a.messages.finalizeAssistant(asst)
 			a.status.SetUsage(asst.Usage.TotalTokens, asst.Usage.Cost.Total)
 		}
+		a.persistMessage(e.Message)
 	case agent.ToolExecutionStart:
 		a.messages.append(msgEntry{role: "tool", text: fmt.Sprintf("[%s]", e.ToolName)})
 	case agent.ToolExecutionEnd:
@@ -316,6 +330,114 @@ func (m *messageList) Render(width int) []string {
 }
 
 func (m *messageList) Invalidate() {}
+
+// initSession opens the project-local SQLite database and creates a
+// session row. On any error the app continues without persistence.
+func (a *interactiveApp) initSession() {
+	dbPath := filepath.Join(a.cwd, ".gcode", "project.db")
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
+		return
+	}
+	db, err := store.Open(dbPath)
+	if err != nil {
+		return
+	}
+	sess, err := db.CreateSession(a.cwd)
+	if err != nil {
+		_ = db.Close()
+		return
+	}
+	a.db = db
+	a.sessionID = sess.ID
+}
+
+// persistMessage serialises the message and appends it to the current
+// session branch. Silently drops errors so the UI keeps running.
+func (a *interactiveApp) persistMessage(msg agent.AgentMessage) {
+	if a.db == nil || msg == nil {
+		return
+	}
+	md, err := store.SerializeMessageEntry(msg)
+	if err != nil {
+		return
+	}
+	a.leafMu.Lock()
+	parent := a.leafID
+	a.leafMu.Unlock()
+
+	entry, err := a.db.AppendEntry(a.sessionID, parent, store.EntryTypeMessage, md)
+	if err != nil {
+		return
+	}
+
+	a.leafMu.Lock()
+	a.leafID = entry.ID
+	a.leafMu.Unlock()
+}
+
+// transformContext is wired into the agent as its TransformContext hook.
+// It estimates the current context size and, if compaction is needed,
+// runs a fresh compaction pass and returns the reduced message list.
+func (a *interactiveApp) transformContext(ctx context.Context, messages []agent.AgentMessage) ([]agent.AgentMessage, error) {
+	if a.db == nil || a.sessionID == "" {
+		return messages, nil
+	}
+	tokens := compaction.EstimateContextTokens(messages)
+	settings := compaction.DefaultCompactionSettings
+	if !compaction.ShouldCompact(tokens, a.model.ContextWindow, settings) {
+		return messages, nil
+	}
+
+	a.leafMu.Lock()
+	leaf := a.leafID
+	a.leafMu.Unlock()
+	if leaf == "" {
+		return messages, nil
+	}
+
+	entries, err := a.db.GetBranch(leaf)
+	if err != nil {
+		return messages, nil
+	}
+
+	prep := compaction.PrepareCompaction(entries, messages, settings)
+	if prep == nil {
+		return messages, nil
+	}
+
+	result, err := compaction.Compact(ctx, prep, a.model, a.apiKey, settings, nil)
+	if err != nil {
+		return messages, nil
+	}
+
+	compEntry, err := a.db.AppendEntry(a.sessionID, leaf, store.EntryTypeCompaction, store.CompactionData{
+		Summary:          result.Summary,
+		FirstKeptEntryID: result.FirstKeptEntryID,
+		TokensBefore:     result.TokensBefore,
+		ReadFiles:        result.ReadFiles,
+		ModifiedFiles:    result.ModifiedFiles,
+	})
+	if err == nil {
+		a.leafMu.Lock()
+		a.leafID = compEntry.ID
+		a.leafMu.Unlock()
+	}
+
+	// Rebuild the message list from the updated branch so the agent
+	// sees the summary + kept messages.
+	updatedEntries, err := a.db.GetBranch(a.leafID)
+	if err != nil {
+		return messages, nil
+	}
+	sessCtx, err := store.BuildContext(updatedEntries)
+	if err != nil {
+		return messages, nil
+	}
+	return sessCtx.Messages, nil
+}
+
+// guard: json is referenced by store package indirectly.
+var _ = json.Marshal
 
 func renderEntry(e msgEntry, width int) []string {
 	switch e.role {
