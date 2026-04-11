@@ -93,6 +93,17 @@ func ParseKey(data []byte) (KeyID, bool) {
 		if b >= 0x01 && b <= 0x1A && b != '\r' && b != '\n' && b != '\t' {
 			return KeyID(fmt.Sprintf("ctrl+%c", 'a'+b-1)), true
 		}
+		// Ctrl+punctuation that terminals map to the 0x1C..0x1F range.
+		switch b {
+		case 0x1C:
+			return "ctrl+\\", true
+		case 0x1D:
+			return "ctrl+]", true
+		case 0x1E:
+			return "ctrl+^", true
+		case 0x1F:
+			return "ctrl+_", true
+		}
 		if b >= 0x20 && b < 0x7F {
 			return KeyID(string(b)), true
 		}
