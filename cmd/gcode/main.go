@@ -10,6 +10,10 @@ import (
 func main() {
 	args, ok := ParseArgs(os.Args[1:])
 	if !ok {
+		// --help exits cleanly; any other parse failure exits with 2.
+		if args.ShowHelp {
+			os.Exit(0)
+		}
 		os.Exit(2)
 	}
 
